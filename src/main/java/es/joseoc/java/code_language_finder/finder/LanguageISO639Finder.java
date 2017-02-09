@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -75,16 +76,42 @@ public class LanguageISO639Finder {
             return reader.lines()
                     .flatMap(line -> Stream.of(line.split(System.lineSeparator())))
                     .map(line -> (String) line)
-                    // TODO test performance: extract the line already split
-                    .filter(line -> isNotBlank(line.split("\t")[1])
-                            && isNotBlank(line.split("\t")[2])
-                            && isNotBlank(line.split("\t")[3])
-                            && line.split("\t")[5].equals("L")
-                    )
+                    .filter(validLanguages())
                     .distinct()
-                    .map(line -> new LanguageISO639(line.split("\t")[0], line.split("\t")[1], line.split("\t")[2], line.split("\t")[3], line.split("\t")[4], line.split("\t")[5], line.split("\t")[6]))
+                    .map(line -> newLanguageISO639(line))
                     .collect(Collectors.toList());
         }
+    }
+
+    private LanguageISO639 newLanguageISO639(String line) {
+        String[] chunk = line.split("\t");
+        return new LanguageISO639(chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6]);
+    }
+
+    private Predicate<? super String> validLanguages() {
+        return line -> {
+            String[] chunkLine = line.split("\t");
+            return haspart2B(chunkLine)
+                    && hasPart2T(chunkLine)
+                    && hasPart1(chunkLine)
+                    && isLiveLanguage(chunkLine);
+        };
+    }
+
+    private boolean haspart2B(String[] chunkLine) {
+        return isNotBlank(chunkLine[1]);
+    }
+
+    private boolean hasPart2T(String[] chunkLine) {
+        return isNotBlank(chunkLine[2]);
+    }
+
+    private boolean hasPart1(String[] chunkLine) {
+        return isNotBlank(chunkLine[3]);
+    }
+
+    private boolean isLiveLanguage(String[] chunkLine) {
+        return chunkLine[5].equals("L");
     }
 
     // Paths cannot be used to read project resources: http://stackoverflow.com/a/34812661/1609873
